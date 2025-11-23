@@ -5,6 +5,7 @@ Repositório dedicado ao nosso projeto para o Criathon 2025/02 referente à disc
 
 Integrantes:
 
-Lucas Molinari - molinari@unifesp.br
-Enrique Susin - enrique.susin@unifesp.br
-Pedro Marx - pedro.marx@unifesp.br
+Lucas Molinari - molinari@unifesp.br          
+Enrique Susin - enrique.susin@unifesp.br       
+Pedro Marx - pedro.marx@unifesp.br        
+  
