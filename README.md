@@ -8,4 +8,5 @@ Integrantes:
 Lucas Molinari - molinari@unifesp.br          
 Enrique Susin - enrique.susin@unifesp.br       
 Pedro Marx - pedro.marx@unifesp.br        
-  
+
+Vídeo de apresentação: https://youtu.be/lkQf3hwq7PI
