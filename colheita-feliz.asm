@@ -1,70 +1,54 @@
 .data
-    msg_menu:       .asciiz "\n========== COLHEITA FELIZ - SISTEMA DE IRRIGACAO ==========\n"
-    msg_opcao1:     .asciiz "1 - Inserir Leitura dos Sensores\n"
-    msg_opcao2:     .asciiz "2 - Processar e Exibir Resultados\n"
-    msg_opcao3:     .asciiz "3 - Sair\n"
-    msg_escolha:    .asciiz "Escolha uma opcao: "
+ 
+    msg_menu:       .asciiz "\n========== BEM-VINDO AO COLHEITA FELIZ! ==========\n"
+    msg_op1:        .asciiz "1 - Inserir Leituras (Clima + Solo)\n"
+    msg_op2:        .asciiz "2 - Processar Irrigacao e Relatorio\n"
+    msg_op3:        .asciiz "3 - Sair\n"
+    msg_escolha:    .asciiz "Opcao: "
+    
+    msg_vel:        .asciiz "\n[SENSOR] Velocidade do Vento (km/h): "
+    msg_dir:        .asciiz "[SENSOR] Direcao do Vento (0-360): "
+    msg_umid:       .asciiz "[SENSOR] Umidade do Solo (%): "
+    msg_n:          .asciiz "[SENSOR] Nivel de Nitrogenio (0-10): "
+    msg_p:          .asciiz "[SENSOR] Nivel de Fosforo (0-10): "
+    msg_k:          .asciiz "[SENSOR] Nivel de Potassio (0-10): "
+    
 
-    msg_sensores:   .asciiz "\n===== LEITURA DE SENSORES =====\n"
-    
-    msg_vel_vento:  .asciiz "Digite a velocidade do vento (km/h): "
-    msg_dir_vento:  .asciiz "Digite a direcao do vento (0-360 graus): "
-    
-    msg_umidade:    .asciiz "Digite a umidade do solo (0-100%): "
-    
-    msg_npk_n:      .asciiz "Nivel de Nitrogenio (0-10): "
-    msg_npk_p:      .asciiz "Nivel de Fosforo (0-10): "
-    msg_npk_k:      .asciiz "Nivel de Potassio (0-10): "
-    
-    msg_salvos:     .asciiz "\nDados coletados com sucesso!\n"
-
-    msg_result:     .asciiz "\n===== RELATORIO DE ATUACAO =====\n"
-    
+    msg_res_clima:  .asciiz "\n===== RELATORIO DE ATUACAO =====\n"
     msg_pressao:    .asciiz "1. Pressao da Agua (Vel + 1): "
-    msg_rotacao:    .asciiz "2. Rotacao do Irrigador (Contra o vento): "
-    msg_adubo:      .asciiz "3. Status da Adubacao: "
-    
     msg_bar:        .asciiz " bar\n"
+    msg_rotacao:    .asciiz "2. Rotacao do Irrigador (Contra o vento): "
     msg_graus:      .asciiz " graus\n"
     
-    status_adubar:  .asciiz "APLICAR ADUBO (Nutrientes Baixos)\n"
-    status_solo_ok: .asciiz "SOLO SAUDAVEL (Nao adubar)\n"
-    
-    msg_sem_dados:  .asciiz "\nERRO: Nenhum dado foi coletado ainda!\n"
-    msg_invalida:   .asciiz "\nOpcao invalida!\n"
-    msg_fim:        .asciiz "\nEncerrando sistema...\n"
-    newline:        .asciiz "\n"
+    msg_analise_npk:.asciiz "\n===== ANALISE NUTRICIONAL =====\n"
+    msg_orig:       .asciiz "Niveis Originais (N-P-K): "
+    msg_sort:       .asciiz "Prioridade de Reposicao (Menor -> Maior): "
+    msg_espaco:     .asciiz " | "
+    msg_alerta:     .asciiz "\n[ACAO] O nutriente mais critico esta abaixo de 5! APLICAR ADUBO.\n"
+    msg_ok:         .asciiz "\n[ACAO] Solo Saudavel. Nao adubar.\n"
 
-    velocidade_vento: .word 0
-    direcao_vento:    .word 0
-    umidade_solo:     .word 0
-    nivel_n:          .word 0
-    nivel_p:          .word 0
-    nivel_k:          .word 0
-    dados_coletados:  .word 0 
+
+    # vetor 1: Clima [0]=Velocidade, [4]=Direcao, [8]=Umidade
+    array_clima:    .word 0, 0, 0   
+    
+    # vetor 2: Nutrientes [0]=N, [4]=P, [8]=K
+    array_npk:      .word 0, 0, 0   
+    array_sort:     .word 0, 0, 0 
 
 .text
 .globl main
 
 main:
-menu_principal:
+loop_menu:
     li $v0, 4
     la $a0, msg_menu
     syscall
-    
-    li $v0, 4
-    la $a0, msg_opcao1
+    la $a0, msg_op1
     syscall
-    
-    li $v0, 4
-    la $a0, msg_opcao2
+    la $a0, msg_op2
     syscall
-    
-    li $v0, 4
-    la $a0, msg_opcao3
+    la $a0, msg_op3
     syscall
-    
-    li $v0, 4
     la $a0, msg_escolha
     syscall
 
@@ -72,99 +56,104 @@ menu_principal:
     syscall
     move $t0, $v0
 
-    beq $t0, 1, ler_sensores
-    beq $t0, 2, processar_dados
-    beq $t0, 3, sair
-    
-    li $v0, 4
-    la $a0, msg_invalida
-    syscall
-    j menu_principal
+    beq $t0, 1, call_leitura
+    beq $t0, 2, call_processamento
+    beq $t0, 3, exit_prog
+    j loop_menu
 
-ler_sensores:
-    li $v0, 4
-    la $a0, msg_sensores
+call_leitura:
+    jal func_ler_completo
+    j loop_menu
+
+call_processamento:
+    jal func_processar_tudo
+    j loop_menu
+
+exit_prog:
+    li $v0, 10
     syscall
 
+# clima (Vento/Umidade) E nutrientes (NPK)
+func_ler_completo:
+    addi $sp, $sp, -4
+    sw $ra, 0($sp)
+
+    la $t0, array_clima     # aponta para clima
+    la $t1, array_npk       # aponta para npk
+    la $t2, array_sort      # copia
+
     li $v0, 4
-    la $a0, msg_vel_vento
+    la $a0, msg_vel
     syscall
     li $v0, 5
     syscall
-    la $t0, velocidade_vento 
     sw $v0, 0($t0)
 
+    # direcao
     li $v0, 4
-    la $a0, msg_dir_vento
+    la $a0, msg_dir
     syscall
     li $v0, 5
     syscall
-    la $t0, direcao_vento
-    sw $v0, 0($t0)
+    sw $v0, 4($t0)
 
+    # umidade
     li $v0, 4
-    la $a0, msg_umidade
+    la $a0, msg_umid
     syscall
     li $v0, 5
     syscall
-    la $t0, umidade_solo
-    sw $v0, 0($t0)
+    sw $v0, 8($t0)
 
+    # npk
     # N
     li $v0, 4
-    la $a0, msg_npk_n
+    la $a0, msg_n
     syscall
     li $v0, 5
     syscall
-    la $t0, nivel_n
-    sw $v0, 0($t0)
-    
+    sw $v0, 0($t1)
+    sw $v0, 0($t2)
+
     # P
     li $v0, 4
-    la $a0, msg_npk_p
+    la $a0, msg_p
     syscall
     li $v0, 5
     syscall
-    la $t0, nivel_p
-    sw $v0, 0($t0)
-    
+    sw $v0, 4($t1)
+    sw $v0, 4($t2)
+
     # K
     li $v0, 4
-    la $a0, msg_npk_k
+    la $a0, msg_k
     syscall
     li $v0, 5
     syscall
-    la $t0, nivel_k
-    sw $v0, 0($t0)
+    sw $v0, 8($t1)
+    sw $v0, 8($t2)
 
-    # salvar dados
-    li $t1, 1
-    la $t0, dados_coletados
-    sw $t1, 0($t0)
+    lw $ra, 0($sp)
+    addi $sp, $sp, 4
+    jr $ra
 
-    li $v0, 4
-    la $a0, msg_salvos
-    syscall
-    j menu_principal
-
-processar_dados:
-    la $t1, dados_coletados
-    lw $t0, 0($t1)
-    beqz $t0, erro_sem_dados
+func_processar_tudo:
+    addi $sp, $sp, -4       # abre pilha
+    sw $ra, 0($sp)          # salva retorno para main
 
     li $v0, 4
-    la $a0, msg_result
+    la $a0, msg_res_clima
     syscall
 
-    # pressao
+    la $t0, array_clima
+
+    # calculo pressao
     li $v0, 4
     la $a0, msg_pressao
     syscall
 
-    la $t2, velocidade_vento
-    lw $t1, 0($t2)
-    
-    addi $a0, $t1, 1 
+    lw $t1, 0($t0)
+    addi $a0, $t1, 1
     li $v0, 1
     syscall
 
@@ -177,15 +166,11 @@ processar_dados:
     la $a0, msg_rotacao
     syscall
 
-    la $t2, direcao_vento
-    lw $t1, 0($t2)
-    
+    lw $t1, 4($t0)
     addi $t2, $t1, 180
-    
     li $t3, 360
     div $t2, $t3
     mfhi $a0
-
     li $v0, 1
     syscall
 
@@ -193,51 +178,109 @@ processar_dados:
     la $a0, msg_graus
     syscall
 
-    # adubo
+    # bubble sort
     li $v0, 4
-    la $a0, msg_adubo
+    la $a0, msg_analise_npk
     syscall
-
-    la $t5, nivel_n
-    lw $t1, 0($t5)
+    la $a0, msg_orig
+    syscall
     
-    la $t5, nivel_p
-    lw $t2, 0($t5)
-    
-    la $t5, nivel_k
-    lw $t3, 0($t5)
-    
-    li $t4, 5
-
-    blt $t1, $t4, precisa_adubar
-    blt $t2, $t4, precisa_adubar
-    blt $t3, $t4, precisa_adubar
-
+    la $t1, array_npk
+    lw $a0, 0($t1)
+    li $v0, 1
+    syscall
     li $v0, 4
-    la $a0, status_solo_ok
+    la $a0, msg_espaco
     syscall
-    j fim_processamento
-
-precisa_adubar:
+    lw $a0, 4($t1)
+    li $v0, 1
+    syscall
     li $v0, 4
-    la $a0, status_adubar
+    la $a0, msg_espaco
     syscall
-
-fim_processamento:
+    lw $a0, 8($t1)
+    li $v0, 1
+    syscall
     li $v0, 4
     la $a0, newline
     syscall
-    j menu_principal
 
-erro_sem_dados:
-    li $v0, 4
-    la $a0, msg_sem_dados
-    syscall
-    j menu_principal
+    jal alg_bubble_sort
 
-sair:
     li $v0, 4
-    la $a0, msg_fim
+    la $a0, msg_sort
     syscall
-    li $v0, 10
+    
+    la $t1, array_sort
+    lw $s0, 0($t1)
+    
+    move $a0, $s0
+    li $v0, 1
     syscall
+    li $v0, 4
+    la $a0, msg_espaco
+    syscall
+    lw $a0, 4($t1)
+    li $v0, 1
+    syscall
+    li $v0, 4
+    la $a0, msg_espaco
+    syscall
+    lw $a0, 8($t1)
+    li $v0, 1
+    syscall
+
+    li $t5, 5
+    blt $s0, $t5, status_critico
+    
+    li $v0, 4
+    la $a0, msg_ok
+    syscall
+    j fim_func_processar
+
+status_critico:
+    li $v0, 4
+    la $a0, msg_alerta
+    syscall
+
+fim_func_processar:
+    lw $ra, 0($sp)
+    addi $sp, $sp, 4
+    jr $ra
+
+alg_bubble_sort:
+    # salva contexto
+    addi $sp, $sp, -12
+    sw $s0, 0($sp)
+    sw $s1, 4($sp)
+    sw $s2, 8($sp)
+
+    la $s0, array_sort
+    
+    # compara 0 e 1
+    lw $s1, 0($s0)
+    lw $s2, 4($s0)
+    ble $s1, $s2, jump1
+    sw $s2, 0($s0)
+    sw $s1, 4($s0)
+jump1:
+    lw $s1, 4($s0)
+    lw $s2, 8($s0)
+    ble $s1, $s2, jump2
+    sw $s2, 4($s0)
+    sw $s1, 8($s0)
+jump2:
+    lw $s1, 0($s0)
+    lw $s2, 4($s0)
+    ble $s1, $s2, jump3
+    sw $s2, 0($s0)
+    sw $s1, 4($s0)
+jump3:
+    lw $s0, 0($sp)
+    lw $s1, 4($sp)
+    lw $s2, 8($sp)
+    addi $sp, $sp, 12
+    jr $ra
+
+.data
+newline: .asciiz "\n"
